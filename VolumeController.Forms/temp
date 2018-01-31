@@ -1,0 +1,44 @@
+public void RefreshControl() {
+			lblAppName.Text = Application.Name;
+			tkbrVolume.Value = (int)(Application.Volume * 1000);
+		}
+
+		public RCObject UpdateControl() {
+			lblAppName.Text = Application.Name;
+			if (m_ShouldUpdate) {
+				m_ShouldUpdate = false;
+
+				RCObject application = new RCObject("Application");
+				application.AddField(RCField.Integer("pid", Application.ProcessID));
+				application.AddField(RCField.Integer("gid", Application.GroupID));
+				application.AddField(RCField.Float("volume", Application.Volume));
+				application.AddField(RCField.Boolean("muted", Application.Muted));
+				application.AddString(RCString.Create("name", Application.Name));
+				return application;
+			}
+			return null;
+		}
+
+        public RCObject UpdateControl() {
+			lblName.Text = Group.Name;
+			if (m_ShouldUpdate) {
+				m_ShouldUpdate = false;
+
+				RCObject group = new RCObject("Group");
+				group.AddField(RCField.Integer("gid", Group.GroupID));
+				group.AddField(RCField.Float("volume", Group.Volume));
+				group.AddString(RCString.Create("name", Group.Name));
+				return group;
+			}
+			return null;
+		}
+
+		public void RefreshControl() {
+			lblName.Text = Group.Name;
+			tkbrVolume.Value = (int)(Group.Volume * 1000);
+		}
+
+		private void OnScroll() {
+			Group.Volume = (float)tkbrVolume.Value / 1000.0f;
+			m_ShouldUpdate = true;
+		}
