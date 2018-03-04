@@ -11,148 +11,163 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using VolumeController.Service;
+using VolumeController.Service.Networking;
 using VolumeController.AudioCore;
-using VolumeController.Networking;
-using VolumeController.Serialization;
 using System.Net;
 
+using WebSocketSharp;
+using WebSocketSharp.Server;
+using Newtonsoft.Json;
+
 namespace VolumeControllerService {
-	partial class MainService : ServiceBase {
 
-		public Dictionary<int, VolumeApplication> Applications;
-		public Dictionary<int, VolumeGroup> Groups;
+    partial class MainService : ServiceBase {
 
-		private Thread m_Worker;
-		private AutoResetEvent m_StopRequest;
+        private RootObject PreviousInfo = new RootObject();
+        private RootObject ControllerInfo = new RootObject();
 
-		private MNetworking m_Networking;
+        private Thread ThreadWorker;
+        private AutoResetEvent StopRequest;
 
-		private List<IPEndPoint> endPoints = new List<IPEndPoint>();
+        private Networking Networking;
 
-		public MainService() {
-			m_Networking = new MNetworking(NetworkHandle, "", 3000);
+        private static MainService Instance;
 
-			Applications = new Dictionary<int, VolumeApplication>();
-			Groups = new Dictionary<int, VolumeGroup>();
-			m_StopRequest = new AutoResetEvent(false);
+        public MainService() {
+            StopRequest = new AutoResetEvent(false);
+            Networking = new Networking();
 
-			Groups[0] = new VolumeGroup(0, "Group 1", 1.0f);
-			// Groups[1] = new VolumeGroup(1, "Group 2", 1.0f);
+            ControllerInfo.Groups.Add(new Group(0));
 
-			InitializeComponent();
-		}
+            Instance = this;
 
-		internal void TestStartupAndStop(string[] args) {
-			this.OnStart(args);
-			Console.ReadLine();
-			this.OnStop();
-		}
+            InitializeComponent();
+        }
 
-		protected override void OnStart(string[] args) {
-			m_Worker = new Thread(UpdateData);
-			m_Worker.Start();
-		}
+        internal void TestStartupAndStop(string[] args) {
+            this.OnStart(args);
+            Console.ReadLine();
+            this.OnStop();
+        }
 
-		protected override void OnStop() {
-			m_StopRequest.Set();
-			m_Worker.Join();
-		}
+        protected override void OnStart(string[] args) {
+            Networking.Start();
+            ThreadWorker = new Thread(UpdateData);
+            ThreadWorker.Start();
+        }
 
-		private void NetworkHandle(RCDatabase database, IPEndPoint endPoint) {
-			switch (database.GetName()) {
-				case "Login":
-					Login(database, endPoint);
-					break;
-				case "UpdateData":
-					UpdateData(database);
-					break;
-				default:
-					break;
-			}
-		}
+        protected override void OnStop() {
+            Networking.Stop();
+            StopRequest.Set();
+            ThreadWorker.Join();
+        }
 
-		private void Login(RCDatabase database, IPEndPoint endPoint) {
-			endPoints.Add(endPoint);
-			Console.WriteLine("New login!");
-		}
+        public static RootObject GetInformation() {
+            return Instance.ControllerInfo;
+        }
 
-		private void UpdateData(RCDatabase database) {
-			foreach (var obj in database.Objects) {
-				Console.WriteLine("Data updated!");
-				string type = obj.GetName();
-				int groupID = obj.FindField("gid").GetValue();
-				if (type.Equals("Group")) {
-					Console.WriteLine("\t- Group");
-					Groups[groupID].Volume = obj.FindField("volume").GetValue();
-					Groups[groupID].Name = obj.FindString("name").GetString();
+        public static void SetApplication(Application app) {
+            int index = 0;
+            Instance.GetApplication(Instance.ControllerInfo, app.ProcessID, out index);
 
-					List<ProcessInformation> pinfos = AudioManager.GetAudioApplications();
-					foreach (ProcessInformation p in pinfos)
-						if (Applications.ContainsKey(p.processID) && Applications[p.processID].Valid) {
-							float newVolume = Applications[p.processID].Volume * Groups[Applications[p.processID].GroupID].Volume;
+            if (index >= 0) {
+                Instance.ControllerInfo.Applications[index].Volume = app.Volume;
+                Instance.ControllerInfo.Applications[index].Muted = app.Muted;
+                Instance.ControllerInfo.Applications[index].GroupID = app.GroupID;
+            }
+        }
 
-							AudioManager.SetApplicationVolume(p.processID, newVolume);
-						}
-				} else if (type.Equals("Application")) {
-					Console.WriteLine("\t- Application");
-					int processID = obj.FindField("pid").GetValue();
+        public static void SetGroup(Group group) {
+            int index = 0;
+            Instance.GetGroup(Instance.ControllerInfo, group.GroupID, out index);
 
-					Applications[processID].Volume = obj.FindField("volume").GetValue();
-					Applications[processID].Muted = obj.FindField("muted").GetValue();
-					Applications[processID].Name = obj.FindString("name").GetString();
-					Applications[processID].GroupID = groupID;
+            if (index >= 0) {
+                Instance.ControllerInfo.Groups[index].Name = group.Name;
+                Instance.ControllerInfo.Groups[index].Muted = group.Muted;
+                Instance.ControllerInfo.Groups[index].Volume = group.Volume;
+            }
+        }
 
-					AudioManager.SetApplicationVolume(processID, Applications[processID].Volume * Groups[groupID].Volume);
-				}
-			}
-		}
+        private void SendData() {
+            RootObject temp = new RootObject();
 
-		private void UpdateData() {
-			while (true) {
-				RCDatabase data = new RCDatabase("Data");
-				foreach (var dicGroup in Groups) {
-					VolumeGroup group = dicGroup.Value;
+            for (int i = 0; i < ControllerInfo.Applications.Count; i++) {
+                try {
+                    int ind = 0;
+                    Application app = GetApplication(PreviousInfo, ControllerInfo.Applications[i].ProcessID, out ind);
+                    if (ind >= 0 && ControllerInfo.Applications[i].Equals(app)) {
+                        temp.Applications.Add(app);
+                    }
+                } catch (Exception) {
+                    continue;
+                }
+            }
 
-					RCObject application = new RCObject("Group");
-					application.AddField(RCField.Integer("gid", group.GroupID));
-					application.AddString(RCString.Create("name", group.Name));
-					application.AddField(RCField.Float("volume", group.Volume));
-					data.AddObject(application);
-				}
+            for (int i = 0; i < ControllerInfo.Groups.Count; i++) {
+                try {
+                    int ind = 0;
+                    Group group = GetGroup(PreviousInfo, ControllerInfo.Groups[i].GroupID, out ind);
+                    if (ind >= 0 && ControllerInfo.Groups[i].Equals(group)) {
+                        temp.Groups.Add(group);
+                    }
+                } catch (Exception) {
+                    continue;
+                }
+            }
 
+            String data = JsonConvert.SerializeObject(temp, Formatting.Indented);
 
-				List<ProcessInformation> pinfos = AudioManager.GetAudioApplications();
-				foreach (ProcessInformation p in pinfos) {
-					if (!Applications.ContainsKey(p.processID)) {
-						Applications[p.processID] = new VolumeApplication(p.processID, 0);
-						Applications[p.processID].Volume = 1;
-					}
-					if (Applications[p.processID].Valid) {
-						AudioManager.SetApplicationVolume(p.processID, Applications[p.processID].Volume * Groups[Applications[p.processID].GroupID].Volume);
+            Networking.Send(data);
+        }
 
-						try {
-							Process process = Process.GetProcessById(p.processID);
-							Applications[p.processID].Name = process.ProcessName;
-						} catch (ArgumentException) {
-							Applications[p.processID].Name = p.name;
-						}
+        private Application GetApplication(RootObject obj, int ProcessID, out int i) {
+            for (i = 0; i < obj.Applications.Count; i++) {
+                if (obj.Applications[i].ProcessID == ProcessID) return obj.Applications[i];
+            }
+            i = -1;
+            return null;
+        }
 
-						RCObject application = new RCObject("Application");
-						application.AddField(RCField.Integer("pid", Applications[p.processID].ProcessID));
-						application.AddField(RCField.Integer("gid", Applications[p.processID].GroupID));
-						application.AddField(RCField.Float("volume", Applications[p.processID].Volume));
-						application.AddField(RCField.Boolean("muted", Applications[p.processID].Muted));
-						application.AddString(RCString.Create("name", Applications[p.processID].Name));
-						data.AddObject(application);
-					}
-				}
+        private Group GetGroup(RootObject obj, int GroupID, out int i) {
+            for (i = 0; i < obj.Groups.Count; i++) {
+                if (obj.Groups[i].GroupID == GroupID) return obj.Groups[i];
+            }
+            i = -1;
+            return null;
+        }
 
-				foreach (var endPoint in endPoints) {
-					m_Networking.Send(data, endPoint);
-				}
+        private void UpdateData() {
+            while (true) {
+                List<ProcessInformation> pinfos = AudioManager.GetAudioApplications();
+                foreach (ProcessInformation p in pinfos) {
+                    int i = 0;
+                    Application app = GetApplication(ControllerInfo, p.processID, out i);
+                    if (app == null) {
+                        app = new Application();
+                        app.ProcessID = p.processID;
+                        app.GroupID = 0;
+                        app.Volume = 1;
+                        ControllerInfo.Applications.Add(app);
+                        app = GetApplication(ControllerInfo, p.processID, out i);
+                    }
+                    if (app.Valid) {
+                        Group group = GetGroup(ControllerInfo, app.GroupID, out i);
+                        AudioManager.SetApplicationVolume(app.ProcessID, (float)(app.Volume * group.Volume));
 
-				if (m_StopRequest.WaitOne(500)) return;
-			}
-		}
-	}
+                        try {
+                            Process process = Process.GetProcessById(p.processID);
+                            app.Name = process.ProcessName;
+                        } catch (ArgumentException) {
+                            app.Name = p.name;
+                        }
+                    }
+                }
+
+                SendData();
+
+                if (StopRequest.WaitOne(500)) return;
+                PreviousInfo = new RootObject(ControllerInfo);
+            }
+        }
+    }
 }

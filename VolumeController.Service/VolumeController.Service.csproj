@@ -52,6 +52,9 @@
     <StartupObject>VolumeController.Service.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -61,27 +64,22 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml" />
+    <Reference Include="websocket-sharp, Version=1.0.2.59611, Culture=neutral, PublicKeyToken=5660b08a1845a91e, processorArchitecture=MSIL">
+      <HintPath>..\packages\WebSocketSharp.1.0.3-rc11\lib\websocket-sharp.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AudioCore\VolumeApplication.cs" />
     <Compile Include="AudioCore\VolumeGroup.cs" />
     <Compile Include="AudioManager.cs" />
-    <Compile Include="Networking\Encryption.cs" />
+    <Compile Include="JsonSerial.cs" />
     <Compile Include="Networking\Networking.cs" />
+    <Compile Include="Networking\App.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <Compile Include="Serialization\ContainerType.cs" />
-    <Compile Include="Serialization\RCArray.cs" />
-    <Compile Include="Serialization\RCBase.cs" />
-    <Compile Include="Serialization\RCDatabase.cs" />
-    <Compile Include="Serialization\RCField.cs" />
-    <Compile Include="Serialization\RCObject.cs" />
-    <Compile Include="Serialization\RCString.cs" />
-    <Compile Include="Serialization\SerializationUtils.cs" />
-    <Compile Include="Serialization\RCType.cs" />
     <Compile Include="MainService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -93,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
