@@ -12,7 +12,7 @@ namespace VolumeController.Service.Networking {
         private WebSocketServer webSocketServer;
 
         public Networking() {
-            webSocketServer = new WebSocketServer(3820);
+            webSocketServer = new WebSocketServer(80);
             webSocketServer.AddWebSocketService<App>("/");
         }
 
