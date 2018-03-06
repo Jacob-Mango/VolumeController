@@ -34,12 +34,16 @@ namespace VolumeControllerService {
         private static MainService Instance;
 
         public MainService() {
+            Instance = this;
+
             StopRequest = new AutoResetEvent(false);
             Networking = new Networking();
 
-            ControllerInfo.Groups.Add(new Group(0));
+            SetGroup(new Group(0));
+            SetGroup(new Group(1));
+            SetGroup(new Group(2));
+            SetGroup(new Group(3));
 
-            Instance = this;
 
             InitializeComponent();
         }
@@ -85,6 +89,8 @@ namespace VolumeControllerService {
                 Instance.ControllerInfo.Groups[index].Name = group.Name;
                 Instance.ControllerInfo.Groups[index].Muted = group.Muted;
                 Instance.ControllerInfo.Groups[index].Volume = group.Volume;
+            } else {
+                Instance.ControllerInfo.Groups.Insert(group.GroupID, group);
             }
         }
 
@@ -120,6 +126,16 @@ namespace VolumeControllerService {
             Networking.Send(data);
         }
 
+        public static Application GetApplication(int ProcessID) {
+            int i;
+            return Instance.GetApplication(Instance.ControllerInfo, ProcessID, out i);
+        }
+
+        public static Group GetGroup(int GroupID) {
+            int i;
+            return Instance.GetGroup(Instance.ControllerInfo, GroupID, out i);
+        }
+
         private Application GetApplication(RootObject obj, int ProcessID, out int i) {
             for (i = 0; i < obj.Applications.Count; i++) {
                 if (obj.Applications[i].ProcessID == ProcessID) return obj.Applications[i];
@@ -151,8 +167,7 @@ namespace VolumeControllerService {
                         app = GetApplication(ControllerInfo, p.processID, out i);
                     }
                     if (app.Valid) {
-                        Group group = GetGroup(ControllerInfo, app.GroupID, out i);
-                        AudioManager.SetApplicationVolume(app.ProcessID, (float)(app.Volume * group.Volume));
+                        app.UpdateVolume();
 
                         try {
                             Process process = Process.GetProcessById(p.processID);

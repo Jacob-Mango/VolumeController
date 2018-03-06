@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using System.Runtime.InteropServices;
+using VolumeControllerService;
 
 namespace VolumeController.Service {
     public class Group {
@@ -14,8 +15,9 @@ namespace VolumeController.Service {
         public bool Muted { get; set; }
 
         public Group(int groupID) {
+            GroupID = groupID;
             Name = "Group " + groupID;
-            Volume = 1;
+            Volume = 0.3;
             Muted = false;
         }
 
@@ -36,12 +38,14 @@ namespace VolumeController.Service {
         public string Name { get; set; }
         public int GroupID { get; set; }
 
+        private double m_Volume;
+
         public double Volume {
             get {
-                return (double)AudioManager.GetApplicationVolume(ProcessID);
+                return m_Volume;
             }
             set {
-                AudioManager.SetApplicationVolume(ProcessID, (float)value);
+                m_Volume = value;
             }
         }
 
@@ -62,6 +66,10 @@ namespace VolumeController.Service {
             set {
                 AudioManager.SetApplicationMute(ProcessID, value);
             }
+        }
+
+        public void UpdateVolume() {
+            AudioManager.SetApplicationVolume(ProcessID, (float)(m_Volume * MainService.GetGroup(GroupID).Volume));
         }
 
         public override bool Equals(Object obj) {
