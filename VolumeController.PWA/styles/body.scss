@@ -48,77 +48,131 @@ body {
 .group {
     animation: 0.03s ease-in 0s 1 slideInFromTop;
     position: relative;
-    top: -200px;
+    top: -0;
     margin: 0;
-    height: 420px;
+    height: 200px;
+    display: flex;
+    align-items: stretch;
     background-color: rgba(235, 142, 88, 0.9);
-    .left,
+    .left {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 60px;
+        display: flex;
+        vertical-align: middle;
+        .slider-wrapper {
+            height: 100px;
+        }
+    }
     .right {
-        height: 125px;
+        position: absolute;
+        bottom: 0;
+        left: 60px;
         display: inline-block;
         vertical-align: top;
-        position: relative;
-        top: 290px;
-    }
-    .left {
-        width: 130px;
-    }
-    .right {
-        width: calc(100% - 135px);
-    }
-    .left .slider[orient=vertical] {
-        position: relative;
-        left: 10px;
-    }
-    select {
-        width: 120px;
-        height: 32px;
-        display: inline-block;
-        position: relative;
-        top: 2px;
+        margin: 10px;
+        flex: 1;
+        overflow: hidden;
+        select {
+            width: 120px;
+            height: 32px;
+            display: inline-block;
+            position: relative;
+            top: 2px;
+        }
     }
 }
 
 .application-group {
     padding: 2px 16px;
     position: relative;
-    top: -200px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
     .application {
-        display: inline-block;
-        height: 125px;
-        width: 400px;
+        min-height: 120px;
+        max-width: 450px;
+        width: 100%;
+        display: flex;
+        align-items: stretch;
         background-color: rgba(235, 142, 88, 0.9);
         .left {
-            width: 130px;
-            height: 125px;
-            display: inline-block;
-            vertical-align: top;
+            width: 150px;
+            height: 120px;
+            display: flex;
+            vertical-align: middle;
+            .slider-wrapper {
+                height: 100px;
+            }
+            img {
+                width: 100px;
+                height: 100px;
+                margin: 10px 0;
+            }
         }
         .right {
-            width: calc(100% - 135px);
-            height: 125px;
+            position: relative;
+            max-height: 100px;
             display: inline-block;
             vertical-align: top;
+            margin: 10px;
+            flex: 1;
+            overflow: hidden;
+            .app-name {
+                text-align: right;
+                font-weight: 450;
+                font-size: 20px;
+                margin: 0;
+                margin-top: 0.6em;
+                margin-right: 0;
+                margin-left: auto;
+            }
+            div.controls {
+                margin: 0;
+                padding: 0;
+                position: absolute;
+                bottom: 0;
+                display: block;
+                width: 100%;
+                height: 60px;
+                .mute {
+                    position: absolute;
+                    left: 0;
+                    bottom: 0;
+                    max-width: 125px;
+                    width: 100%;
+                }
+                .cgroup {
+                    position: absolute;
+                    right: 0;
+                    bottom: 0;
+                    max-width: 125px;
+                    width: 100%;
+                }
+            }
+            @media (max-width: 950px) {
+            }
+            @media (max-width: 500px) {
+                width: 100%;
+                height: 100px;
+                margin: 0;
+            }
         }
-        .left img {
-            width: 96px;
-            height: 96px;
-            position: relative;
-            top: -10px;
-            left: 0px;
+        @media (max-width: 950px) {
+            max-width: 100%;
+            padding: 0;
         }
-        @media (max-width: 430px) {
-            width: 100%;
+        @media (max-width: 500px) {
+            max-width: 100%;
+            display: block;
+            min-height: 200px;
+            padding: 0;
         }
     }
-}
-
-.left .slider[orient=vertical] {
-    writing-mode: bt-lr;
-    -webkit-appearance: slider-vertical;
-    width: 8px;
-    height: 120px;
-    padding: 0 5px;
+    @media (max-width: 950px) {
+        display: block;
+    }
 }
 
 .templates {

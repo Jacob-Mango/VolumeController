@@ -6,13 +6,26 @@ class Controller {
 		this.Applications = [];
 		this.Groups = [];
 
-		this.Socket = new Socket(['127.0.0.1', 'localhost']);
+		// Internal IP's are the best :)
+		this.Socket = new Socket(['192.168.0.65']);
 		this.Socket.OnMessage(function (event) {
 			self.Update(JSON.parse(event.data));
 		});
+
+		setInterval(function () {
+			try {
+				for (var i = 0; i < self.Applications.length; i++) {
+					$("#" + self.Applications[i].ProcessID + " .app-name").css({
+						"fontSize": 20
+					});
+					$("#" + self.Applications[i].ProcessID + " .app-name").autoshrink();
+				}
+			} catch (e) {}
+		}, 400);
 	}
 
 	UpdateApplication(app) {
+		var self = this;
 		var id = this.Applications.length + 1;
 		var index;
 		var found = this.Applications.some(function (ele, i) {
@@ -21,13 +34,14 @@ class Controller {
 		if (!found) {
 			var ht = $('.templates .application').clone();
 			ht.attr('id', app.ProcessID);
-			ht.find(".slider").attr('id', app.ProcessID);
-			ht.find(".slider").attr('value', app.Volume * 100);
+			ht.find(".slider-wrapper").attr('id', app.ProcessID);
 			ht.find(".mute").attr('id', app.ProcessID);
 			ht.find(".cgroup").attr('id', app.ProcessID);
 			ht.find(".app-name").text(app.Name);
 
 			$("#" + app.GroupID + ".application-group").append($(ht));
+
+			new Slider(app.ProcessID);
 
 			this.Applications.push(app);
 		} else {
@@ -38,6 +52,8 @@ class Controller {
 	}
 
 	UpdateGroup(group) {
+		if (group.Volume === undefined) return;
+
 		var id = this.Applications.length + 1;
 		var index;
 		var found = this.Applications.some(function (ele, i) {
@@ -56,25 +72,30 @@ class Controller {
 			this.Groups.push(group);
 		} else {
 			this.Groups[index].Volume = group.Volume;
-
-			console.log(this.Groups[index].Volume);
 			$(".group #" + this.Groups[index].GroupID + ".slider").val(this.Groups[index].Volume * 100);
 		}
 	}
 
 	SelectGroup(select) {
-		var c = "invisible";
+		try {
+			if (this.Groups.length > 0) {
+				var c = "invisible";
 
-		for (var i = 0; i < this.Groups.length; i++)
-			$("#" + this.Groups[i].GroupID + ".application-group").addClass(c);
+				for (var i = 0; i < this.Groups.length; i++)
+					$("#" + this.Groups[i].GroupID + ".application-group").addClass(c);
 
-		$("#" + select + ".application-group").removeClass(c);
 
-		$(".group").attr('id', select);
-		$(".group .slider").attr('id', select);
-		$(".group .ccgroup").attr('id', select);
-		$(".group .mute").attr('id', select);
-		$(".group .name").text(this.Groups[select].Name);
+				$("#" + select + ".application-group").removeClass(c);
+
+				$(".group").attr('id', select);
+				$(".group .slider-group").attr('id', select);
+				$(".group .ccgroup").attr('id', select);
+				$(".group .mute").attr('id', select);
+				$(".group .name").text(this.Groups[select].Name);
+			}
+		} catch (e) {
+			console.log(e);
+		}
 	}
 
 	Update(data) {
@@ -91,7 +112,6 @@ class Controller {
 		for (var i = 0; i < this.Groups.length; i++) {
 			this.Groups[i].Volume = $(".group #" + this.Groups[i].GroupID + ".slider").val() / 100;
 		}
-
 		this.Socket.SendData({
 			"Groups": this.Groups,
 			"Applications": this.Applications

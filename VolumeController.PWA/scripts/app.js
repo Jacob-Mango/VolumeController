@@ -4,6 +4,9 @@ function main() {
 		c.SelectGroup($("#groups-select").find(":selected").val());
 	});
 
+	setTimeout(function () {
+		c.SelectGroup(0);
+	}, 100);
 }
 
 $(document).ready(function () {
